@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>黄金纯度计算工具</title>
+    <script>
+        let results = JSON.parse(localStorage.getItem('goldPurityResults')) || [];
+
+        document.addEventListener('DOMContentLoaded', () => {
+            // Check if the page is opened in a browser
+            if (isInAppBrowser()) {
+                alert('请使用浏览器打开此链接，以继续使用该工具。');
+                window.location.href = 'about:blank';
+            } else {
+                updateResultsTable();
+            }
+        });
+
+        function isInAppBrowser() {
+            const userAgent = navigator.userAgent || navigator.vendor || window.opera;
+            return /FBAN|FBAV|Instagram|wechat|MicroMessenger|WhatsApp/i.test(userAgent);
+        }
+
+        function validateProductCode() {
+            const productCodePrefix = document.getElementById('productCodePrefix').value;
+            const productCodeMiddle = document.getElementById('productCodeMiddle').value;
+            const productCodeSuffix = document.getElementById('productCodeSuffix').value;
+            const productCode = productCodePrefix + productCodeMiddle + productCodeSuffix;
+
+            if (productCode.length !== 11) {
+                alert('产品编号不正确，请确保输入的产品编号是11位数。');
+                return false;
+            }
+            document.getElementById('productCode').value = productCode;
+            return true;
+        }
+
+        function calculatePurity() {
+            if (!validateProductCode()) {
+                return;
+            }
+            const goldWeight = parseFloat(document.getElementById('goldWeight').value);
+            const weightInWater = parseFloat(document.getElementById('weightInWater').value);
+            const productCode = document.getElementById('productCode').value;
+            const storeCode = document.getElementById('storePick').value;
+
+            if (isNaN(goldWeight) || isNaN(weightInWater) || goldWeight <= 0 || weightInWater <= 0) {
+                alert('请正确输入黄金重量和浸水重量。');
+                return;
+            }
+
+            const purity = goldWeight / weightInWater / 19.34;
+            const purityPercentage = (purity * 100).toFixed(2);
+            results.push({ storeCode, productCode, goldWeight, weightInWater, purityPercentage });
+            localStorage.setItem('goldPurityResults', JSON.stringify(results));
+            updateResultsTable();
+        }
+
+        function updateResultsTable() {
+            const resultsTable = document.getElementById('resultsTable');
+            resultsTable.innerHTML = "<tr><th>店铺编号</th><th>产品编号</th><th>黄金重量 (g)</th><th>浸水重量 (g)</th><th>纯度 (%)</th></tr>";
+            results.forEach(result => {
+                resultsTable.innerHTML += `<tr><td>${result.storeCode}</td><td>${result.productCode}</td><td>${result.goldWeight}</td><td>${result.weightInWater}</td><td>${result.purityPercentage}</td></tr>`;
+            });
+        }
+
+        function copyResults() {
+            let resultText = "店铺编号\t产品编号\t黄金重量 (g)\t浸水重量 (g)\t纯度 (%)\n";
+            results.forEach(result => {
+                resultText += `${result.storeCode}\t${result.productCode}\t${result.goldWeight}\t${result.weightInWater}\t${result.purityPercentage}\n`;
+            });
+            navigator.clipboard.writeText(resultText).then(() => {
+                alert('结果已复制到剪贴板。');
+            }, () => {
+                alert('复制失败，请手动复制。');
+            });
+        }
+
+        function clearResults() {
+            if (confirm('确定要清空所有记录吗？此操作不可撤销。')) {
+                results = [];
+                localStorage.removeItem('goldPurityResults');
+                updateResultsTable();
+                document.getElementById('productCodePrefix').value = '';
+                document.getElementById('productCodeMiddle').value = 'G1';
+                document.getElementById('productCodeSuffix').value = '';
+                document.getElementById('goldWeight').value = '';
+                document.getElementById('weightInWater').value = '';
+            }
+        }
+
+        function generateExcelFile() {
+            if (results.length === 0) {
+                alert('没有可导出的记录。');
+                return;
+            }
+            let csvContent = '店铺编号,产品编号,黄金重量 (g),浸水重量 (g),纯度 (%)\r\n';
+            results.forEach(result => {
+                csvContent += `${result.storeCode},${result.productCode},${result.goldWeight},${result.weightInWater},${result.purityPercentage}\r\n`;
+            });
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = "黄金纯度计算结果.csv";
+            link.style.display = "none";
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+    </script>
+    <style>
+        #clearButton {
+            font-size: 2em;
+            margin-top: 150px;
+            padding: 20px;
+            background-color: red;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        #clearButton:hover {
+            background-color: darkred;
+        }
+        #clearWarning {
+            font-size: 1.5em;
+            color: red;
+            margin-top: 20px;
+        }
+        #generateExcelButton {
+            font-size: 1em;
+            margin-top: 20px;
+            padding: 10px;
+            background-color: green;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        #generateExcelButton:hover {
+            background-color: darkgreen;
+        }
+    </style>
+</head>
+<body>
+    <h2>选择店铺</h2>
+    <select id="storePick">
+                <option>ZQ1</option>
+        <option>ZQ8</option>
+        <option>HT1</option>
+        <option>ZQ6</option>
+        <option>ZQB</option>
+        <option>ZQC</option>
+        <option>FH1</option>
+        <option>FH2</option>
+                <option>ZHC</option>
+        <option>HTG</option>
+                <option>SNF</option>
+        <option>HT9</option>
+        <option>FS9</option>
+        <option>SZK</option>
+                <option>JTX</option>
+        <option>SVG</option>
+                <option>HTF</option>
+        <option>WNN</option>
+        <option>HT8</option>
+        <option>HTH</option>
+    </select>
+
+    <h2>输入产品编号</h2>
+    <label for="productCodePrefix">前3位产品编号: </label>
+    <input type="text" id="productCodePrefix" maxlength="3" placeholder="前3位" oninput="this.value = this.value.toUpperCase()"><br><br>
+
+    <label for="productCodeMiddle">第4-5位产品编号: </label>
+    <select id="productCodeMiddle">
+        <option value="G1">G1</option>
+        <option value="G3">G3</option>
+        <option value="G4">G4</option>
+        <option value="G5">G5</option>
+        <option value="G6">G6</option>
+        <option value="G7">G7</option>
+        <option value="G8">G8</option>
+    </select><br><br>
+
+    <label for="productCodeSuffix">第6位及后5位产品编号: </label>
+    <input type="text" id="productCodeSuffix" maxlength="6" placeholder="第6位及后5位" oninput="this.value = this.value.toUpperCase()"><br><br>
+
+    <input type="hidden" id="productCode">
+
+    <h2>准备水</h2>
+    <p>
+        3. 准备水<br>
+        o 使用清水，确保水杯干净并装满水（约85%至90%的水量，以便容纳黄金物品）。<br>
+        o 确保黄金产品在测试时能够100%完全浸入水中。<br>
+        4. 称量水的重量<br>
+        o 将水杯放置在秤盘上，按下归零键，将秤重显示归零。<br>
+        o 确保秤盘处于0.00g状态。
+    </p>
+
+    <h2>输入黄金重量和浸水重量</h2>
+    <label for="goldWeight">黄金重量 (g): </label>
+    <input type="number" id="goldWeight" step="0.01" placeholder="输入黄金重量"><br><br>
+
+    <label for="weightInWater">黄金在水中的重量 (g): </label>
+    <input type="number" id="weightInWater" step="0.01" placeholder="输入浸水重量"><br><br>
+
+    <button onclick="calculatePurity()">计算纯度</button>
+
+    <h2>结果</h2>
+    <table id="resultsTable" border="1">
+        <tr>
+            <th>店铺编号</th>
+            <th>产品编号</th>
+            <th>黄金重量 (g)</th>
+            <th>浸水重量 (g)</th>
+            <th>纯度 (%)</th>
+        </tr>
+    </table>
+
+    <br>
+    <button onclick="copyResults()">生成结果并复制</button>
+    <button id="generateExcelButton" onclick="generateExcelFile()">生成 Excel 文件</button>
+    <div id="clearWarning">⚠️ 请注意：清空所有记录按钮会删除所有记录，在完成之前请勿按下。</div>
+    <button id="clearButton" onclick="clearResults()">清空所有记录</button>
+</body>
+</html>
