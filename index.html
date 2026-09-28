@@ -95,6 +95,14 @@
             </button>
         </div>
 
+        <div id="meituan_plan_gate" role="alert" class="flex flex-col gap-3 rounded-xl border-2 border-rose-300 bg-rose-50 px-4 py-3 text-xs text-rose-900 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+            <div>
+                <strong class="block text-sm">请先确认本单美团券方案</strong>
+                <span id="meituan_plan_gate_text" class="mt-1 block leading-relaxed">系统会自动沿用上次选择；确认前不会显示计算结果。</span>
+            </div>
+            <button id="meituan_plan_confirm_btn" type="button" onclick="confirmMeituanPlan()" class="w-full shrink-0 rounded-lg bg-[#7A0C1E] px-4 py-2.5 text-xs font-extrabold text-white shadow hover:bg-[#5C0612] sm:w-auto">确认使用当前方案</button>
+        </div>
+
         <div role="note" class="rounded-xl border-2 border-amber-300 bg-amber-50 px-4 py-3 text-xs leading-relaxed text-amber-900 shadow-sm">
             <strong>示例提示：</strong>页面中半灰色输入框内的数字只是演示用例，请替换为实际数据；输入后会自动变成黑色，表示已进入正式计算。
         </div>
@@ -177,7 +185,7 @@
                 </div>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <label class="cursor-pointer">
-                        <input type="radio" id="meituan_plan_960" name="meituan_plan" value="960" checked onchange="applyMeituanPlan(this.value)" class="peer sr-only">
+                        <input type="radio" id="meituan_plan_960" name="meituan_plan" value="960" checked onchange="selectMeituanPlan(this.value)" class="peer sr-only">
                         <span class="block rounded-xl border-2 border-stone-200 bg-white px-4 py-3 transition-all peer-checked:border-[#7A0C1E] peer-checked:bg-[#F3E6D5]/45 peer-checked:shadow-sm">
                             <span class="flex items-center justify-between gap-2">
                                 <span class="text-sm font-bold text-stone-900">960 元团 1000 元</span>
@@ -187,7 +195,7 @@
                         </span>
                     </label>
                     <label class="cursor-pointer">
-                        <input type="radio" id="meituan_plan_970" name="meituan_plan" value="970" onchange="applyMeituanPlan(this.value)" class="peer sr-only">
+                        <input type="radio" id="meituan_plan_970" name="meituan_plan" value="970" onchange="selectMeituanPlan(this.value)" class="peer sr-only">
                         <span class="block rounded-xl border-2 border-stone-200 bg-white px-4 py-3 transition-all peer-checked:border-[#7A0C1E] peer-checked:bg-[#F3E6D5]/45 peer-checked:shadow-sm">
                             <span class="flex items-center justify-between gap-2">
                                 <span class="text-sm font-bold text-stone-900">970 元团 1000 元</span>
@@ -782,14 +790,14 @@
                             </div>
                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                 <label class="cursor-pointer">
-                                    <input id="fixed_plan_960" type="radio" name="fixed_meituan_plan" value="960" checked onchange="calculateFixedPricing()" class="peer sr-only">
+                                    <input id="fixed_plan_960" type="radio" name="fixed_meituan_plan" value="960" checked onchange="selectMeituanPlan(this.value)" class="peer sr-only">
                                     <span class="block min-h-[88px] rounded-xl border-2 border-stone-200 bg-white px-4 py-3 transition-all peer-checked:border-[#7A0C1E] peer-checked:bg-[#F3E6D5]/45 peer-checked:shadow-sm">
                                         <span class="flex justify-between gap-2 text-sm font-bold text-stone-900">960 元团 1000 元 <b class="rounded-full bg-[#7A0C1E] px-2 py-0.5 text-[9px] text-white">默认</b></span>
                                         <span class="block mt-1 text-[11px] text-stone-500">每张承担 31.88 元；只影响券承担费用。</span>
                                     </span>
                                 </label>
                                 <label class="cursor-pointer">
-                                    <input id="fixed_plan_970" type="radio" name="fixed_meituan_plan" value="970" onchange="calculateFixedPricing()" class="peer sr-only">
+                                    <input id="fixed_plan_970" type="radio" name="fixed_meituan_plan" value="970" onchange="selectMeituanPlan(this.value)" class="peer sr-only">
                                     <span class="block min-h-[88px] rounded-xl border-2 border-stone-200 bg-white px-4 py-3 transition-all peer-checked:border-[#7A0C1E] peer-checked:bg-[#F3E6D5]/45 peer-checked:shadow-sm">
                                         <span class="flex justify-between gap-2 text-sm font-bold text-stone-900">970 元团 1000 元 <b class="rounded-full border border-stone-300 px-2 py-0.5 text-[9px] text-stone-500">原方案</b></span>
                                         <span class="block mt-1 text-[11px] text-stone-500">每张承担 21.88 元；可复核 Excel 原始结果。</span>
@@ -989,6 +997,61 @@
             '960': { label: '960 元团 1000 元', D31: 31.88 },
             '970': { label: '970 元团 1000 元', D31: 21.88 }
         };
+        const MEITUAN_PLAN_STORAGE_KEY = 'lukfook-meituan-plan-v1';
+        let meituanPlanConfirmed = false;
+
+        function getRememberedMeituanPlan() {
+            try {
+                const saved = localStorage.getItem(MEITUAN_PLAN_STORAGE_KEY);
+                return Object.prototype.hasOwnProperty.call(meituanPlans, saved) ? saved : '960';
+            } catch (error) {
+                return '960';
+            }
+        }
+
+        function updateMeituanPlanGate() {
+            const selected = getSelectedMeituanPlan();
+            const plan = meituanPlans[selected] || meituanPlans['960'];
+            const gate = document.getElementById('meituan_plan_gate');
+            const text = document.getElementById('meituan_plan_gate_text');
+            const button = document.getElementById('meituan_plan_confirm_btn');
+            if (!gate || !text || !button) return;
+            if (meituanPlanConfirmed) {
+                gate.className = 'flex flex-col gap-3 rounded-xl border-2 border-emerald-300 bg-emerald-50 px-4 py-3 text-xs text-emerald-900 shadow-sm sm:flex-row sm:items-center sm:justify-between';
+                text.innerText = `本单已确认使用 ${plan.label}；每张承担 ￥${plan.D31.toFixed(2)}。如需更换，请先切换方案再重新确认。`;
+                button.innerText = '已确认当前方案';
+                button.disabled = true;
+                button.className = 'w-full shrink-0 rounded-lg bg-emerald-700 px-4 py-2.5 text-xs font-extrabold text-white shadow sm:w-auto';
+            } else {
+                gate.className = 'flex flex-col gap-3 rounded-xl border-2 border-rose-300 bg-rose-50 px-4 py-3 text-xs text-rose-900 shadow-sm sm:flex-row sm:items-center sm:justify-between';
+                text.innerText = `系统已沿用上次选择：${plan.label}，每张承担 ￥${plan.D31.toFixed(2)}。请确认本单确实使用此方案；确认前不会显示计算结果。`;
+                button.innerText = `确认使用 ${selected} 方案`;
+                button.disabled = false;
+                button.className = 'w-full shrink-0 rounded-lg bg-[#7A0C1E] px-4 py-2.5 text-xs font-extrabold text-white shadow hover:bg-[#5C0612] sm:w-auto';
+            }
+        }
+
+        function setCalculationPanelsVisible(visible) {
+            ['tab_single_panel', 'tab_matrix_panel', 'tab_fixed_panel'].forEach(id => {
+                const panel = document.getElementById(id);
+                if (panel) panel.classList.toggle('hidden', !visible);
+            });
+        }
+
+        function confirmMeituanPlan() {
+            meituanPlanConfirmed = true;
+            updateMeituanPlanGate();
+            switchTab(currentTab);
+        }
+
+        function selectMeituanPlan(planKey) {
+            const normalizedPlan = Object.prototype.hasOwnProperty.call(meituanPlans, planKey) ? planKey : '960';
+            try { localStorage.setItem(MEITUAN_PLAN_STORAGE_KEY, normalizedPlan); } catch (error) {}
+            meituanPlanConfirmed = false;
+            applyMeituanPlan(normalizedPlan, false);
+            updateMeituanPlanGate();
+            setCalculationPanelsVisible(false);
+        }
 
         function validateFixedPricingInputs(items, rates, planKey) {
             const errors = [];
@@ -1890,9 +1953,12 @@
         }
 
         function applyMeituanPlan(planKey, recalculate = true) {
-            const plan = meituanPlans[planKey] || meituanPlans['960'];
-            const planRadio = document.getElementById('meituan_plan_' + planKey);
+            const normalizedPlan = Object.prototype.hasOwnProperty.call(meituanPlans, planKey) ? planKey : '960';
+            const plan = meituanPlans[normalizedPlan];
+            const planRadio = document.getElementById('meituan_plan_' + normalizedPlan);
+            const fixedPlanRadio = document.getElementById('fixed_plan_' + normalizedPlan);
             if (planRadio) planRadio.checked = true;
+            if (fixedPlanRadio) fixedPlanRadio.checked = true;
 
             document.getElementById('input_D31').value = plan.D31.toFixed(2);
             document.getElementById('matrix_D31').value = plan.D31.toFixed(2);
@@ -1905,8 +1971,9 @@
         }
 
         function getSelectedMeituanPlan() {
-            const selected = document.querySelector('input[name="meituan_plan"]:checked');
-            return selected ? selected.value : '960';
+            const selected = document.querySelector('input[name="meituan_plan"]:checked')
+                || document.querySelector('input[name="fixed_meituan_plan"]:checked');
+            return selected ? selected.value : getRememberedMeituanPlan();
         }
 
         // Tab selection controller
@@ -1932,6 +1999,12 @@
             matrixPanel.classList.toggle('hidden', tab !== 'matrix');
             fixedPanel.classList.toggle('hidden', tab !== 'fixed');
             weightedGlobalPanel.classList.toggle('hidden', tab === 'fixed');
+
+            updateMeituanPlanGate();
+            if (!meituanPlanConfirmed) {
+                setCalculationPanelsVisible(false);
+                return;
+            }
 
             if (tab === 'single') {
                 calculateSingle();
@@ -3134,7 +3207,9 @@
             renderFixedPricingItems();
             markStaticExampleInputs();
             if (!loadFixedInventoryCache()) loadFixedEmbeddedInventory().catch(() => {});
-            applyMeituanPlan('960', false);
+            applyMeituanPlan(getRememberedMeituanPlan(), false);
+            updateMeituanPlanGate();
+            setCalculationPanelsVisible(false);
             calculateSingle();
             updateFixedPricingCommissionRule();
             calculateFixedPricing();
